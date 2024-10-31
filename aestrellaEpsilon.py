@@ -69,7 +69,7 @@ def caloriasPorCelda(celda):
     else:
         return 0  # Otras celdas o muro
     
-
+posiciones_calorias_sumadas = []
 def a_aestrella_epsilon(mapa, origen, destino, tipoHeuristica, epsilon):
     listaFrontera: List[Tuple[float, float, Casilla]] = []
     heapq.heapify(listaFrontera)
@@ -93,15 +93,13 @@ def a_aestrella_epsilon(mapa, origen, destino, tipoHeuristica, epsilon):
     traza = [f"- Mapa: {mapa.nombre if hasattr(mapa, 'nombre') else 'No especificado'}; origen en ({origen.fila},{origen.col}); destino en ({destino.fila},{destino.col}); heurística: {['Trivial', 'Euclídea', 'Manhattan nA', 'Manhattan A', 'Octile', 'Chebyshev', 'Diagonal'][tipoHeuristica]}"]
     traza.append("- Lista interior: []")
     traza.append(f"- Lista frontera: [({origen.fila},{origen.col})]")
-
+    antes = -1
     while listaFrontera:
         # Obtener el f_min actual
         f_min = listaFrontera[0][0]
-        print(f"f_min actual: {f_min}")
 
         # Crear lista focal
         listaFocal = [nodo for nodo in listaFrontera if nodo[0] <= f_min * (1 + epsilon)]
-        print(f"Tamaño de lista focal: {len(listaFocal)}")
 
         if not listaFocal:
             print("Lista focal vacía, terminando búsqueda")
@@ -109,7 +107,6 @@ def a_aestrella_epsilon(mapa, origen, destino, tipoHeuristica, epsilon):
 
         # Seleccionar el nodo con el menor valor de calorías dentro de la lista focal
         nodoSeleccionado = min(listaFocal, key=lambda nodo: nodo[1])  # (f, calorias, nodo)
-        print(f"Nodo seleccionado de la lista focal: {nodoSeleccionado}")
 
         # Remover el nodo seleccionado de la frontera
         listaFrontera.remove(nodoSeleccionado)
@@ -121,6 +118,9 @@ def a_aestrella_epsilon(mapa, origen, destino, tipoHeuristica, epsilon):
         if nodoActual.fila == destino.fila and nodoActual.col == destino.col:
             print("Destino alcanzado, reconstruyendo camino")
             camino = []
+            sumaCalorias = 0
+            print("sumaCalorias-->",sumaCalorias)
+            print(f"posicion({nodoActual.fila},{nodoActual.col}) --> calorias de la posicion --> {caloriasAcumuladas[nodoActual.fila][nodoActual.col]}")
             sumaCalorias = caloriasAcumuladas[nodoActual.fila][nodoActual.col]
             fila, col = nodoActual.fila, nodoActual.col
             while fila is not None and col is not None:
@@ -133,8 +133,10 @@ def a_aestrella_epsilon(mapa, origen, destino, tipoHeuristica, epsilon):
                     fila, col = None, None
             camino.reverse()
             print(f"Camino encontrado: {camino}")
+            print("juankyyy")
+            representacion_juanky(mapa, posiciones_calorias_sumadas)
+    
             return costeAcumulado[destino.fila][destino.col], camino, sumaCalorias, traza, nodosExplorados
-
         # Explorar vecinos
         for movI, movJ in movimientosPosibles(mapa, nodoActual):
             costeMov = mirarMov(movI, movJ, nodoActual)
@@ -143,13 +145,21 @@ def a_aestrella_epsilon(mapa, origen, destino, tipoHeuristica, epsilon):
             h = seleccionarHeuristica(tipoHeuristica, Casilla(movI, movJ), destino)
             nuevoCoste = costeAcumulado[nodoActual.fila][nodoActual.col] + costeMov
             nuevasCalorias = caloriasAcumuladas[nodoActual.fila][nodoActual.col] + caloriasMov
-            print(f"  Nuevas calorias: {nuevasCalorias}")
+
             # Definir f(n) como la suma de coste acumulado y la heurística
             f = nuevoCoste + h
 
             # Condición de actualización mejorada
             if (nuevoCoste < costeAcumulado[movI][movJ]) or \
                (nuevoCoste == costeAcumulado[movI][movJ] and nuevasCalorias < caloriasAcumuladas[movI][movJ]):
+                # Imprimir solo cuando se actualizan las calorías acumuladas
+                if nuevasCalorias != antes:
+                    print(f"Posición: ({movI}, {movJ}), Calorías acumuladas hasta aquí: {nuevasCalorias}")
+                    posiciones_calorias_sumadas.append((movI, movJ))
+
+                
+                antes = nuevasCalorias
+
                 costeAcumulado[movI][movJ] = nuevoCoste
                 caloriasAcumuladas[movI][movJ] = nuevasCalorias
                 nuevaCasilla = Casilla(movI, movJ)
@@ -158,6 +168,7 @@ def a_aestrella_epsilon(mapa, origen, destino, tipoHeuristica, epsilon):
 
     print("No se encontró un camino válido")
     traza.append("- No se ha cambiado camino al destino.")
+    # Llamar a `representacion_juanky` al final de la búsqueda para mostrar el mapa
     return -1, [], 0, traza, nodosExplorados
 
 def movimientosPosibles(mapa, posActual):
@@ -194,3 +205,17 @@ def movimientosPosibles(mapa, posActual):
                 celdasValidas.append((movI, movJ))
     
     return celdasValidas
+
+# Función para representar el mapa con asteriscos en las posiciones de calorías acumuladas
+def representacion_juanky(mapa, posiciones_calorias_sumadas):
+    # Crear una matriz de puntos
+    representacion = [['.' for _ in range(mapa.ancho)] for _ in range(mapa.alto)]
+    
+    # Colocar asteriscos en las posiciones de calorías acumuladas
+    for fila, col in posiciones_calorias_sumadas:
+        representacion[fila][col] = '*'
+    
+    # Mostrar la representación en consola
+    for fila in representacion:
+        print(" ".join(fila))
+
